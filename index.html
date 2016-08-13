@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>RainbowMaze</title>
+		<link href="rainbowMaze/RainbowMaze.css" rel="stylesheet"></link>
+		<style>
+			*{
+				font-family:Arial, Helvetica, sans-serif;
+			}
+			body{
+				background:#17E0FF;
+				text-align:center;
+			}
+			#container{
+				display:inline-block;
+			}
+		</style>
+		<script src="js/jquery-2.1.1.min.js"></script>
+		<script src="js/jquery-ui.min.js"></script>
+		<script src="js/support.js"></script>
+		<script src="rainbowMaze/RainbowMaze.js"></script>
+	</head>
+	<body>
+		<div id="control" style="margin:20px 0;">
+			<div style="padding:0 2em;display:inline-block;vertical-align:top;">
+				<h3>RainbowMaze:</h3>
+				<p style="width:20rem;">Your goal is to move from the white space to the black space.  Each time you move to a colored space, you will be transported to the nearest space of the same color.  If there are multiple spaces at the same distance, one is picked at random.  Distance is calculated vertically or horizontally; diagonal distances are thus measured by their longest vertical or horizontal value, not Euclidean distance.</p>
+				<p style="width:20rem;">Use the Up, Down, Right, Left keys to play (make sure you have clicked the page first).</p>
+			</div>
+			<div style="padding:0 2em;display:inline-block;vertical-align:top;">
+				<h3>Presets</h3>
+				<select id="presets">
+					<option value="0">Small</option>
+					<option value="1">Medium</option>
+					<option value="2">Large</option>
+				</select>
+				<div>
+					<div class="preset" id="preset0">
+						Width: 10<br/>
+						Height: 8<br/>
+						Colors: 4
+					</div>
+					<div class="preset" id="preset1">
+						Width: 14<br/>
+						Height: 9<br/>
+						Colors: 5
+					</div>
+					<div class="preset" id="preset2">
+						Width: 20<br/>
+						Height: 10<br/>
+						Colors: 5
+					</div>
+				</div>
+				<button onclick="new_preset()">New Game</button>
+			</div>
+			<div style="padding:0 2em;display:inline-block;vertical-align:top;">
+				<h3>Custom</h3>
+				Width: <input id="width" type="text" value="10" /><br/>
+				Height: <input id="height" type="text" value="10" /><br/>
+				Colors : <select id="colors_amt">
+					<option>3</option>
+					<option>4</option>
+					<option>5</option>
+					<option>6</option>
+					<option>7</option>
+				</select><br/>
+				<button onclick="new_custom()">New Game</button>
+			</div>
+		</div>
+		<div id="container" style="margin-bottom:5rem;"></div>
+		<div style="margin-top:1em;">
+			Created October 5<sup>th</sup>, 2014 by <a href="http://www.dmcblue.com">dmcblue</a><br/>
+			Code and concept:<br/>
+			<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">RainbowMaze</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">dmcblue</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
+		</div>
+		<script>
+			var rm;
+			jQuery(document).ready(function(){
+				jQuery('.preset').hide(0);
+				jQuery('#presets').change(function(){
+					jQuery('.preset').fadeOut(0/*RainbowMaze.time*/);
+					jQuery('#preset'+jQuery('#presets').val()).fadeIn(RainbowMaze.time);
+				}).val("1").change();
+				new_preset();
+			});
+			function new_custom(){
+				window.clearInterval(timer);
+				rm = 
+					new RainbowMaze({
+						container_id : '#container',
+						autoload : true,
+						width: jQuery('#width').val(),
+						height: jQuery('#height').val(),
+						colors_amt: jQuery('#colors_amt').val()
+					});
+			}
+			function new_preset(){
+				window.clearInterval(timer);
+				switch(parseInt(jQuery('#presets').val())){
+					case 0 :
+						rm = 
+							new RainbowMaze({
+								container_id : '#container',
+								autoload : true,
+								width: 10,
+								height: 8,
+								colors_amt: 4
+							});
+						break;
+					case 1 :
+						rm = 
+							new RainbowMaze({
+								container_id : '#container',
+								autoload : true,
+								width: 14,
+								height: 9,
+								colors_amt: 5
+							});
+						break;
+					case 2 :
+						rm = 
+							new RainbowMaze({
+								container_id : '#container',
+								autoload : true,
+								width: 20,
+								height: 10,
+								colors_amt: 5
+							});
+						break;
+					default:;
+				}
+			}
+		</script>
+	</body>
+</html>
