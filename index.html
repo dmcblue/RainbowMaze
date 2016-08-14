@@ -1,19 +1,147 @@
-<!DOCTYPE html>
 <html>
 	<head>
-		<meta charset="UTF-8">
 		<title>RainbowMaze</title>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="RainbowMaze, a casual maze game." />
+		<style>
+			@-ms-viewport{
+				width: device-width;
+			}
+		</style>
+		<link href="favicon.png" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+		<!-- END Params -->
+		
+		<!-- Share Meta -->
+			<!-- Open Graph -->
+			<meta property="og:title" content="RainbowMaze" />
+			<meta property="og:type" content="website" />
+			<meta property="og:url" content="http://www.dmcblue.com/RainbowMaze/" />
+			<meta property="og:image" content="http://www.dmcblue.com/RainbowMaze/preview.png" />
+			<meta property="og:description" content="RainbowMaze, a casual maze game." />
+			<meta property="og:locale" content="en_GB" />
+			<!-- END Open Graph -->
+			
+			<!-- Twitter Card -->
+			<meta name="twitter:card" content="summary_large_image">
+			<meta name="twitter:site" content="http://www.dmcblue.com/RainbowMaze/">
+			<meta name="twitter:creator" content="@dmcblue">
+			<meta name="twitter:title" content="RainbowMaze">
+			<meta name="twitter:description" content="RainbowMaze, a casual maze game.">
+			<meta name="twitter:image" content="http://www.dmcblue.com/RainbowMaze/preview.png">
+			<!-- END Twitter Card -->
+		<!-- END Share Meta -->
+		<link href="https://fonts.googleapis.com/css?family=Arimo" rel="stylesheet" type="text/css">
 		<link href="rainbowMaze/RainbowMaze.css" rel="stylesheet"></link>
 		<style>
 			*{
-				font-family:Arial, Helvetica, sans-serif;
+				font-family: 'Arimo', sans-serif;
+				font-size:1rem;
+				font-weight:normal;
+				margin:0;
+				padding:0;
+			}
+			html,body{
+				width:100%;
+				height:100%;
 			}
 			body{
-				background:#17E0FF;
+				background:#212121;/*#17E0FF;*/
 				text-align:center;
 			}
 			#container{
 				display:inline-block;
+				width:100%;
+				height:calc(100% - 2rem);
+			}
+			#menu{
+				position:absolute;
+				bottom:0;
+				width:100%;
+				height:2rem;
+				box-shadow:0rem -0.25rem 0.25rem rgba(0,0,0,0.3);
+			}
+			#menu table{
+				width:100%;
+				height:100%;
+				background:rgba(0,0,0,0.2);
+				border-collapse:collapse;
+			}
+			#menu table td{
+				color:#FFF;
+				text-align:center;
+				border-right:1px solid #FFF;
+			}
+			#menu table td:last-child{
+				border-right:none;
+			}
+			#menu table td.pressable:hover{
+				background:rgba(255,255,255,0.1);
+			}
+			p{
+				margin-bottom:1rem;
+			}
+			h2, h2 span{
+				font-size:2.2rem;
+				margin:1rem 0;
+			}
+			h3, h3 span{
+				font-size:1.6rem;
+				margin:1rem 0;
+			}
+			a{
+				color:#AAA;
+			}
+			hr{
+				color:#FFF;
+			}
+			label{
+				margin-right:1rem;
+			}
+			button{
+				display:inline-block;
+				color:#FFF;
+				background:#222;
+				border:none;
+				padding:0.25rem 0.5rem;
+			}
+			.pressable{
+				cursor:pointer;
+			}
+			.modal{
+				position:absolute;
+				top:1rem;
+				left:1rem;
+				width:calc(100% - 6rem);
+				height:calc(100% - 5rem - 2rem /* for menu */);
+				background:rgba(0,0,0,0.85);
+				color:#FFF;
+				padding:1rem 2rem 2rem;
+				text-align:left;
+				overflow-y:auto;
+				box-shadow:0.25rem 0.25rem 0.25rem rgba(0,0,0,0.2);
+				z-index:10;
+			}
+			.modal:after{
+				clear:both;
+			}
+			.modal_close{
+				float:right;
+				display:inline-block;
+				width:2rem;
+				height:2rem;
+				line-height:2rem;
+				margin-right:1rem;
+				text-align:center;
+				cursor:pointer;
+			}
+			.modal_close:hover{
+				background:rgba(255,255,255,0.1);
+				box-shadow:0.25rem 0.25rem 0.25rem rgba(0,0,0,0.2);
+			}
+			.modal h3:nth-child(2),
+			.modal h2:nth-child(2){
+				margin-top:2rem;
 			}
 		</style>
 		<script src="js/jquery-2.1.1.min.js"></script>
@@ -22,70 +150,165 @@
 		<script src="rainbowMaze/RainbowMaze.js"></script>
 	</head>
 	<body>
-		<div id="control" style="margin:20px 0;">
-			<div style="padding:0 2em;display:inline-block;vertical-align:top;">
-				<h3>RainbowMaze:</h3>
-				<p style="width:20rem;">Your goal is to move from the white space to the black space.  Each time you move to a colored space, you will be transported to the nearest space of the same color.  If there are multiple spaces at the same distance, one is picked at random.  Distance is calculated vertically or horizontally; diagonal distances are thus measured by their longest vertical or horizontal value, not Euclidean distance.</p>
-				<p style="width:20rem;">Use the Up, Down, Right, Left keys to play (make sure you have clicked the page first).</p>
-			</div>
-			<div style="padding:0 2em;display:inline-block;vertical-align:top;">
-				<h3>Presets</h3>
-				<select id="presets">
-					<option value="0">Small</option>
-					<option value="1">Medium</option>
-					<option value="2">Large</option>
-				</select>
-				<div>
-					<div class="preset" id="preset0">
-						Width: 10<br/>
-						Height: 8<br/>
-						Colors: 4
-					</div>
-					<div class="preset" id="preset1">
-						Width: 14<br/>
-						Height: 9<br/>
-						Colors: 5
-					</div>
-					<div class="preset" id="preset2">
-						Width: 20<br/>
-						Height: 10<br/>
-						Colors: 5
-					</div>
-				</div>
-				<button onclick="new_preset()">New Game</button>
-			</div>
-			<div style="padding:0 2em;display:inline-block;vertical-align:top;">
-				<h3>Custom</h3>
-				Width: <input id="width" type="text" value="10" /><br/>
-				Height: <input id="height" type="text" value="10" /><br/>
-				Colors : <select id="colors_amt">
+		<div id="container" style=""></div>
+		
+		<div id="menu">
+			<table>
+				<tbody>
+					<tr>
+						<td class="pressable" 
+							onclick="jQuery('#modal_new_game').fadeIn(ani_time);"
+						>+</td>
+						<td>Moves: <span id="moves_count">0</span></td>
+						<td>Time: <span id="time_count">00:00</span></td>
+						<td class="pressable" 
+							onclick="jQuery('#modal_description').fadeIn(ani_time);"
+						>?</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		
+		<div id="modal_introduction" class="modal" style="display:none;">
+			<div class="modal_close" onclick="jQuery(this).parent().fadeOut(ani_time);">x</div>
+			
+			<h2><span style="color:#DB0000;">Ra</span><span style="color:#FF7F00;">in</span><span style="color:#FFFF00;">bo</span><span style="color:#00BB27;">w</span><span style="color:#03E;">Ma</span><span style="color:#6F00FF;">ze</span></h2>
+			<p>RainbowMaze is a casual maze game. Your goal is to move from the white space to the black space.  Each time you move to a colored space, you will be transported to the nearest space of the same color.</p>
+			<p>Distance is calculated vertically or horizontally; diagonal distances are thus measured by their longest vertical or horizontal value, not Euclidean distance (think concentric rings). If there are multiple spaces at the same distance, one is picked at random (Uniformly).</p>
+			<p>You can move by clicking the arrows around the player icon (the dot) or, if you have clicked into the browser window, you can use the Up, Left, Down and Right keys on the keyboard.</p>
+			
+			<p>&nbsp;</p>
+			<hr/>
+			<p>&nbsp;</p>
+			
+			<h3>Start A New Game</h3>
+			<p>
+				<label for="width">Width:</label> 
+				<input class="width" name="width" type="text" value="10" />
+			</p>
+			<p>
+			<label for="height">Height:</label> <input class="height" name="height" type="text" value="10" /><br/>
+			</p>
+			<p>
+				<label for="colors_amt">Colors:</label> 
+				<select class="colors_amt" name="colors_amt">
 					<option>3</option>
 					<option>4</option>
 					<option>5</option>
 					<option>6</option>
 					<option>7</option>
-				</select><br/>
-				<button onclick="new_custom()">New Game</button>
-			</div>
+				</select>
+			</p>
+			<p>
+				<button onclick="new_game()">New Game</button>
+			</p>
+			
+			<p>&nbsp;</p>
+			<hr/>
+			<p>&nbsp;</p>
+			
+			<p style="text-align:center;">
+				Created October 5<sup>th</sup>, 2014 by <a href="http://www.dmcblue.com" target="_blank">dmcblue</a><br/>
+				Game concept:<br/>
+				<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">RainbowMaze</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName"><a target="_blank" href="https://github.com/dmcblue/RainbowMaze">dmcblue</a></span> is licensed under a <a rel="license"  target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
+			</p>
 		</div>
-		<div id="container" style="margin-bottom:5rem;"></div>
-		<div style="margin-top:1em;">
-			Created October 5<sup>th</sup>, 2014 by <a href="http://www.dmcblue.com">dmcblue</a><br/>
-			Code and concept:<br/>
-			<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">RainbowMaze</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">dmcblue</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
+		
+		<div id="modal_new_game" class="modal" style="display:none;">
+			<div class="modal_close" onclick="jQuery(this).parent().fadeOut(ani_time);">x</div>
+			
+			<h3>Start A New Game</h3>
+			<p>
+				<label for="width">Width:</label> 
+				<input id="width" name="width" type="text" value="10" />
+			</p>
+			<p>
+			<label for="height">Height:</label> <input id="height" name="height" type="text" value="10" /><br/>
+			</p>
+			<p>
+				<label for="colors_amt">Colors:</label> 
+				<select id="colors_amt" name="colors_amt">
+					<option>3</option>
+					<option>4</option>
+					<option>5</option>
+					<option>6</option>
+					<option>7</option>
+				</select>
+			</p>
+			<p>
+				<button onclick="new_game()">New Game</button>
+			</p>
 		</div>
+		
+		
+		<div id="modal_win" class="modal" style="display:none;">
+			<div class="modal_close" onclick="jQuery(this).parent().fadeOut(ani_time);">x</div>
+			
+			<h2><span style="color:#DB0000;">Y</span><span style="color:#FF7F00;">O</span><span style="color:#FFFF00;">U</span> <span style="color:#00BB27;">W</span><span style="color:#03E;">O</span><span style="color:#6F00FF;">N</span>!</h2>
+			
+			<h3>Start A New Game</h3>
+			<p>
+				<label for="width">Width:</label> 
+				<input class="width" name="width" type="text" value="10" />
+			</p>
+			<p>
+			<label for="height">Height:</label> <input class="height" name="height" type="text" value="10" /><br/>
+			</p>
+			<p>
+				<label for="colors_amt">Colors:</label> 
+				<select class="colors_amt" name="colors_amt">
+					<option>3</option>
+					<option>4</option>
+					<option>5</option>
+					<option>6</option>
+					<option>7</option>
+				</select>
+			</p>
+			<p>
+				<button onclick="new_game()">New Game</button>
+			</p>
+		</div>
+		
+		
+		<div id="modal_description" class="modal" style="display:none;">
+			<div class="modal_close" onclick="jQuery(this).parent().fadeOut(ani_time);">x</div>
+			
+			<h2><span style="color:#DB0000;">Ra</span><span style="color:#FF7F00;">in</span><span style="color:#FFFF00;">bo</span><span style="color:#00BB27;">w</span><span style="color:#03E;">Ma</span><span style="color:#6F00FF;">ze</span></h2>
+			<p>RainbowMaze is a casual maze game. Your goal is to move from the white space to the black space.  Each time you move to a colored space, you will be transported to the nearest space of the same color.</p>
+			<p>Distance is calculated vertically or horizontally; diagonal distances are thus measured by their longest vertical or horizontal value, not Euclidean distance (think concentric rings). If there are multiple spaces at the same distance, one is picked at random (Uniformly).</p>
+			<p>You can move by clicking the arrows around the player icon (the dot) or, if you have clicked into the browser window, you can use the Up, Left, Down and Right keys on the keyboard.</p>
+			
+			<p>&nbsp;</p>
+			<hr/>
+			<p>&nbsp;</p>
+			
+			<p style="text-align:center;">
+				Created October 5<sup>th</sup>, 2014 by <a href="http://www.dmcblue.com" target="_blank">dmcblue</a><br/>
+				Game concept:<br/>
+				<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">RainbowMaze</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName"><a target="_blank" href="https://github.com/dmcblue/RainbowMaze">dmcblue</a></span> is licensed under a <a rel="license"  target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
+			</p>
+		</div>
+		
 		<script>
-			var rm;
+			var ani_time = 650;
+			var rm = null;
 			jQuery(document).ready(function(){
-				jQuery('.preset').hide(0);
-				jQuery('#presets').change(function(){
-					jQuery('.preset').fadeOut(0/*RainbowMaze.time*/);
-					jQuery('#preset'+jQuery('#presets').val()).fadeIn(RainbowMaze.time);
-				}).val("1").change();
-				new_preset();
+				jQuery('.width')
+					.change(function(){
+						jQuery('#width').val(jQuery(this).val());
+					});
+				jQuery('.height')
+					.change(function(){
+						jQuery('#height').val(jQuery(this).val());
+					});
+				jQuery('.colors_amt')
+					.change(function(){
+						jQuery('#colors_amt').val(jQuery(this).val());
+					}).val(5).change();
+				new_game();
+				jQuery('#modal_introduction').fadeIn(ani_time);
 			});
-			function new_custom(){
-				window.clearInterval(timer);
+			function new_game(){
 				rm = 
 					new RainbowMaze({
 						container_id : '#container',
@@ -94,43 +317,31 @@
 						height: jQuery('#height').val(),
 						colors_amt: jQuery('#colors_amt').val()
 					});
+				jQuery('.modal').fadeOut(ani_time);
+				rm.getRoot()
+					.on(
+						RainbowMaze.events.moveUpdate,
+						function(e, moves){
+							jQuery('#moves_count').text(moves);
+						}
+					)
+					.on(
+						RainbowMaze.events.timeUpdate,
+						function(e, time){
+							var mins = time.minutes,
+								secs = time.seconds;
+							mins = mins < 10 ? '0'+mins : mins;
+							secs = secs < 10 ? '0'+secs : secs;
+							jQuery('#time_count').text(mins+':'+secs);
+						}
+					).on(
+						RainbowMaze.events.win,
+						function(e, time){
+							jQuery('#modal_win').fadeIn(ani_time);
+						}
+					);
 			}
-			function new_preset(){
-				window.clearInterval(timer);
-				switch(parseInt(jQuery('#presets').val())){
-					case 0 :
-						rm = 
-							new RainbowMaze({
-								container_id : '#container',
-								autoload : true,
-								width: 10,
-								height: 8,
-								colors_amt: 4
-							});
-						break;
-					case 1 :
-						rm = 
-							new RainbowMaze({
-								container_id : '#container',
-								autoload : true,
-								width: 14,
-								height: 9,
-								colors_amt: 5
-							});
-						break;
-					case 2 :
-						rm = 
-							new RainbowMaze({
-								container_id : '#container',
-								autoload : true,
-								width: 20,
-								height: 10,
-								colors_amt: 5
-							});
-						break;
-					default:;
-				}
-			}
+			
 		</script>
 	</body>
 </html>

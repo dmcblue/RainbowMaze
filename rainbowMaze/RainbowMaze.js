@@ -1,23 +1,28 @@
-var lock = false;
-var timer;
 RainbowMaze.prototype = {
 	width	:	30,
 	height	:	10,
 	colors_amt	:	5,
 	color_pool	:	
 		[
-			'#DB0000',
-			'#FF7F00',
-			'#FFFF00',
-			'#00BB27',
-			'#03E',
-			'#6F00FF',
-			'#CB0FFF',
+			'#DB0000', //red
+			'#FF7F00', //orange
+			'#FFFF00', //yellow
+			'#00BB27', //green
+			'#03E',    //blue
+			'#6F00FF', //purple
+			'#CB0FFF', //pink?
 		],
 	autoload	:	false,
-	started	:	false
+	started	:	false,
+	moves	:	0,
+	minutes	:	0,
+	seconds	:	0,
+	lock	:	false,
+	x		:	0,
+	y		:	0
 }
 
+/* Static 'Values' */ 
 RainbowMaze.time = 500;
 RainbowMaze.up = [0,-1];
 RainbowMaze.right = [1,0];
@@ -25,6 +30,185 @@ RainbowMaze.down = [0,1];
 RainbowMaze.left = [-1,0];
 RainbowMaze.START = -1;
 RainbowMaze.END = -2;
+
+RainbowMaze.events =
+	{
+		keydown		:	'keydown.RainbowMaze',
+		moveUpdate	:	'RainbowMaze_event_moveupdate',
+		timeUpdate	:	'RainbowMaze_event_timeupdate',
+		win			:	'RainbowMaze_event_win'
+	};
+
+RainbowMaze.classes =
+	{
+		base	:	'RainbowMaze',
+		board	:	'RainbowMazeBoard',
+		row		:	
+			{
+				base : 'RainbowMaze_row',
+				id : 
+					function(rid){
+						return 'RainbowMaze_row_' + rid;
+					},
+			},
+		tile	:	
+			{
+				base : 'RainbowMaze_tile', //loc
+				id : 
+					function(rid, cid){
+						return 'RainbowMaze_row_' + rid
+								+'_tile_' + cid;
+					},
+			},
+		buttons	:	
+			{
+				main	:	'RainbowMaze_button',
+				up		:	'RainbowMaze_button_up',
+				right	:	'RainbowMaze_button_right',
+				down	:	'RainbowMaze_button_down',
+				left	:	'RainbowMaze_button_left',
+			},
+		player	:	'RainbowMaze_player'
+	};
+
+RainbowMaze.placeholder = '%d';
+RainbowMaze.ids =
+	{
+		base :	
+			function(id){
+				return 'RainbowMaze' + id;
+			}
+	};
+/* END Static 'Values' */ 	
+
+
+/* Static Methods */ 
+/**
+ * Searches the neighbors at distance 'radius' of object at 'loc' in a 2D array 
+ * of objects, returning the set of matches whose property
+ * 'field' has the same value as the 'field' of the object at 'loc'
+ * 
+ * @param [[Object]] array The array (maze) of objects
+ * @param Object loc Object with properties x and y as the location
+ * @param String field Name of the object property to compare
+ * @param Integer radius Distance from 'loc' at which to search
+ * @return [Object] An array of objects with properties x, y for the location
+ * of matches.
+ */
+RainbowMaze.borderSearch = function(array,loc,field,radius){
+	var top = loc.y - radius, r_top = Math.max(top,0),
+		bottom = loc.y + radius, r_bottom = Math.min(bottom, array.length - 1),
+		left = loc.x - radius, r_left = Math.max(loc.x - radius,0),
+		right = loc.x + radius, r_right = Math.min(loc.x + radius, array[0].length - 1);
+	var matches = [];
+	for(var i = r_top, ilen = r_bottom; i <= ilen; i++){
+		if(i === top || i === bottom){
+			for(var j = r_left, jlen = r_right; j <= jlen; j++){
+				if(RainbowMaze.check(loc, array[i][j], field)){
+					var p = {
+						x : array[i][j].x,
+						y : array[i][j].y
+					};
+					
+					matches.push(p);
+				}
+			}
+		}else{
+			if(left === r_left){
+				if(RainbowMaze.check(loc, array[i][r_left], field)){
+					var p = {
+						x : array[i][r_left].x,
+						y : array[i][r_left].y
+					};
+					
+					matches.push(p);
+				}
+			}
+			if(right === r_right){
+				if(RainbowMaze.check(loc, array[i][r_right], field)){
+					var p = {
+						x : array[i][r_right].x,
+						y : array[i][r_right].y
+					};
+					
+					matches.push(p);
+				}
+			}
+		}
+	}
+	return matches;
+};
+
+/**
+ * Checks if the same property on two objects has the same value
+ * 
+ * @param Object loc_a first object
+ * @param Object loc_b second object
+ * @param String field the name of the property to be compared
+ * 
+ */
+RainbowMaze.check = function(loc_a, loc_b, field){
+	return loc_a[field] === loc_b[field];
+};
+
+/**
+ * Calculates the distance between two points according to RainbowMaze 
+ * distance definition
+ * 
+ * @param Integer x1 Row coordinate of point 1
+ * @param Integer y1 Column coordinate of point 1
+ * @param Integer x2 Row coordinate of point 2
+ * @param Integer y2 Column coordinate of point 2
+ * @return Integer Distance between the points
+ */
+RainbowMaze.dist = function(x1, y1, x2, y2){
+	return Math.max(Math.abs(x1 - x2),Math.abs(y1 - y2));
+}
+
+/**
+ * Finds the center of an HTMLElement
+ * 
+ * @return Object Location object with x, y properties (pixels)
+ */
+RainbowMaze.getLocCenter = function(loc){
+	var bbox = loc.get(0).getBoundingClientRect();
+	return {
+		x : Math.round(bbox.left + bbox.width/2),
+		y : Math.round(bbox.top + bbox.height/2)
+	};
+};
+
+/**
+ * Searches an array of Objects for the nearest matches who have the same 
+ * property value for property 'field' as the Object at location 'loc'
+ * 
+ * @param [[Object]] array The array (maze) of objects
+ * @param Object loc Object with properties x and y as the location
+ * @param String field Name of the object property to compare
+ * @return [Object] Array of objects with x, y properties for locations
+ */
+RainbowMaze.nearestArray = function(array,loc,field){
+	var matches = [],
+		radius = 0,
+		max_radius = Math.max(array.length, array[0].length); //can be optimized
+	do{
+		radius++;
+		matches = RainbowMaze.borderSearch(array,loc,field,radius);
+	}while(matches.length === 0 && radius <= max_radius);
+	return matches;
+};
+
+RainbowMaze.sprintf = 
+	function(str, a, b){
+		b = b || null;
+		return b === null
+			? str.replace(RainbowMaze.placeholder, a)
+			: str.replace(RainbowMaze.placeholder, a)
+				.replace(RainbowMaze.placeholder, b)
+		;
+	};
+/* END Static Methods */ 
+
 
 function RainbowMaze (args){
 	/*
@@ -97,10 +281,15 @@ function RainbowMaze (args){
 			(Math.abs(this.end.x - this.start.x) < this.width/3 
 			|| Math.abs(this.end.y - this.start.y) < this.height/3));
 	}
-	this.init();
+	
+	this._init();
 }
 
-RainbowMaze.prototype.init = function(){
+/**
+ * Internal initialization function.  If this.autoload is TRUE, this.draw()
+ * will be called at the end.
+ */
+RainbowMaze.prototype._init = function(){
 	this.maze = [];
 	var colors_amt = this.colors_amt;
 	//build maze
@@ -134,107 +323,288 @@ RainbowMaze.prototype.init = function(){
 	}
 }
 
-RainbowMaze.check = function(loc_a, loc_b, field){
-	return loc_a[field] === loc_b[field];
+/**
+ * Checks if a coordinate is within the maze bounds
+ * 
+ * @param Integer x Row coordinate
+ * @param Integer y Column coordinate
+ * @return Boolean Whether coordinate is in bounds
+ */
+RainbowMaze.prototype.checkPos = function(x,y){
+	return !(x < 0 || x >= this.maze[0].length || y < 0 || y >= this.maze.length);
 };
 
-RainbowMaze.borderSearch = function(array,loc,field,radius){
-	var top = loc.y - radius, r_top = Math.max(top,0),
-		bottom = loc.y + radius, r_bottom = Math.min(bottom, array.length - 1),
-		left = loc.x - radius, r_left = Math.max(loc.x - radius,0),
-		right = loc.x + radius, r_right = Math.min(loc.x + radius, array[0].length - 1);
-	var matches = [];
-	for(var i = r_top, ilen = r_bottom; i <= ilen; i++){
-		if(i === top || i === bottom){
-			for(var j = r_left, jlen = r_right; j <= jlen; j++){
-				if(RainbowMaze.check(loc, array[i][j], field)){
-					var p = {
-						x : array[i][j].x,
-						y : array[i][j].y
-					};
-					
-					matches.push(p);
-				}
-			}
-		}else{
-			if(left === r_left){
-				if(RainbowMaze.check(loc, array[i][r_left], field)){
-					var p = {
-						x : array[i][r_left].x,
-						y : array[i][r_left].y
-					};
-					
-					matches.push(p);
-				}
-			}
-			if(right === r_right){
-				if(RainbowMaze.check(loc, array[i][r_right], field)){
-					var p = {
-						x : array[i][r_right].x,
-						y : array[i][r_right].y
-					};
-					
-					matches.push(p);
-				}
-			}
+/**
+ * Starts a timer for the maze
+ * @param RainbowMaze rainbowMaze Enclosed maze object
+ */ 
+RainbowMaze.continueTimer = function(rainbowMaze){
+	return function(){
+		if(rainbowMaze.seconds === 59){
+			rainbowMaze.minutes++;
 		}
+		rainbowMaze.seconds = (rainbowMaze.seconds + 1)%60;
+		rainbowMaze.getRoot()
+			.trigger(
+				RainbowMaze.events.timeUpdate,
+				{ 
+					minutes : rainbowMaze.minutes,
+					seconds : rainbowMaze.seconds
+				}
+			);
 	}
-	return matches;
 };
 
-RainbowMaze.nearestArray = function(array,loc,field){
-	var matches = [],
-		radius = 0,
-		max_radius = Math.max(array.length, array[0].length); //can be optimized
-	do{
-		radius++;
-		matches = RainbowMaze.borderSearch(array,loc,field,radius);
-	}while(matches.length === 0 && radius <= max_radius);
-	return matches;
-};
-
-RainbowMaze.prototype.getLoc = function(x, y){
-	x = parseInt(x);
-	y = parseInt(y);
-	return jQuery('#RainbowMaze'+this.id+' #RainbowMaze'+this.id+'_row_'+y+' #RainbowMaze'+this.id+'_loc_'+x);
-}
-
+/**
+ * Draws the maze (adds it to HTML DOM)
+ */
 RainbowMaze.prototype.draw = function(){
-	this.id = jQuery('.RainbowMaze').length;
-	var html = '<div class="RainbowMaze" id="RainbowMaze'+this.id+'">';
-	for(var i = 0, ilen = this.maze.length; i < ilen; i++){
-		html += '<div class="RainbowMaze_row" id="RainbowMaze'+this.id+'_row_'+i+'">';
-		for(var j = 0, jlen = this.maze[i].length; j < jlen; j++){
-			html += '<div class="RainbowMaze_loc RainbowMaze'+this.id+'_loc" '
-				+'id="RainbowMaze'+this.id+'_loc_'+j+'" '
-				+'style="background:'+((this.maze[i][j].color > 0)?this.colors[this.maze[i][j].color]: this.colors[0])+';">'
-				/*+this.maze[i][j].color*/+'</div>';
-		}
-		html += '</div>';
-	}
-	html += '<div class="RainbowMaze_player" id="RainbowMaze'+this.id+'_player"><div></div></div>'
-		+'<div class="RainbowMaze_console" id="RainbowMaze'+this.id+'_console"></div>'
-		+'<div class="RainbowMaze_timer" id="RainbowMaze'+this.id+'_console"><span id="min">00</span>:<span id="sec">00</span></div>'
-		+'<div>Moves: <span class="RainbowMaze_moves" id="RainbowMaze'+this.id+'_moves">0</span></div>'
-		+'</div>'//overall inner container
+	this.id = jQuery('.' + RainbowMaze.classes.base).length;
+	
+	var html =
+		jQuery('<div>')
+			.addClass(RainbowMaze.classes.base)
+			.attr('id', RainbowMaze.ids.base(this.id))
 		;
-	jQuery(this.container_id).css('position','relative').empty().append(html).hide(0).fadeIn(RainbowMaze.time);
+	var table = 
+		jQuery('<table>')
+			.addClass(RainbowMaze.classes.board)
+		;
+	var tbody = jQuery('<tbody>'); 
+	for(var i = 0, ilen = this.maze.length; i < ilen; i++){
+		var tr = 
+			jQuery('<tr>')
+				.addClass(RainbowMaze.classes.row.base)
+				.addClass(RainbowMaze.classes.row.id(i))
+			;
+		for(var j = 0, jlen = this.maze[i].length; j < jlen; j++){
+			var color = 
+				(this.maze[i][j].color > 0)
+					? this.colors[this.maze[i][j].color]
+					: this.colors[0]
+				;
+			var td = 
+				jQuery('<td>')
+					.addClass(RainbowMaze.classes.tile.base)
+					.addClass(RainbowMaze.classes.tile.id(i, j))
+					.css('background', color)
+					.append(
+						jQuery('<div>')
+							.addClass(RainbowMaze.classes.buttons.main)
+					)
+				;
+			tr.append(td);
+		}
+		tbody.append(tr);
+	}
+	var rm = this;
+	table
+		.append(tbody)
+		.on(
+			'click',
+			'.' + RainbowMaze.classes.buttons.up, 
+			function(){rm.movePlayer(RainbowMaze.up);}
+		)
+		.on(
+			'click',
+			'.' + RainbowMaze.classes.buttons.right, 
+			function(){rm.movePlayer(RainbowMaze.right);}
+		)
+		.on(
+			'click',
+			'.' + RainbowMaze.classes.buttons.down, 
+			function(){rm.movePlayer(RainbowMaze.down);}
+		)
+		.on(
+			'click',
+			'.' + RainbowMaze.classes.buttons.left, 
+			function(){rm.movePlayer(RainbowMaze.left);}
+		)
+	;
+	html.append(table);
+	
+	
+	jQuery(this.container_id)
+		.empty()
+		.append(html)
+	;
+	
+	
+	jQuery(this.container_id)	
+		.hide(0)
+		.fadeIn(RainbowMaze.time)
+	;
 	
 	this.getLoc(this.start.x, this.start.y).css({'background':'#FFF','border':'1px solid #000'});
 	
 	this.getLoc(this.end.x, this.end.y).css({'background':'#000','border':'1px solid #000'});
 	
 	this.setPlayer(this.start.x, this.start.y);
-	this.controls();
+	this.setKeyboardControls();
 };
 
-RainbowMaze.prototype.controls = function(){
+/**
+ * End the timer
+ */
+RainbowMaze.prototype.endTimer = function(){
+	window.clearInterval(this.timer);
+}
+
+/**
+ * Returns a jQuery object for location in maze
+ * 
+ * @param Integer x The row
+ * @param Integer y The column
+ * @return jQueryObject Location to this maze
+ */
+RainbowMaze.prototype.getLoc = function(x, y){
+	x = parseInt(x);
+	y = parseInt(y);
+	return this.getRoot()
+		.find('.' + RainbowMaze.classes.tile.id(y, x))
+	;
+}
+
+/**
+ * Returns a jQuery object for the root element of this maze.
+ * 
+ * @return jQueryObject root to this maze
+ */
+RainbowMaze.prototype.getRoot = function(){
+	return jQuery('#'+ RainbowMaze.ids.base(this.id));
+};
+
+/**
+ * Animates the movement of the player in a cardinal direction.
+ * 
+ * @param [Integer] dir Indicates a direction of movement.
+ */
+RainbowMaze.prototype.movePlayer = function(dir){
+	var player = this.getRoot().find('.' + RainbowMaze.classes.player);
+	var nx = parseInt(this.x) + dir[0];
+	var ny = parseInt(this.y) + dir[1];
+	
+	if(!this.checkPos(nx, ny)){
+		this.lock = false;return;
+	}
+	var time = RainbowMaze.time;
+	var e = this.getLoc(nx, ny);
+	var center = RainbowMaze.getLocCenter(e);
+	var player_pos = player.position();
+	
+	var vert = dir[1] * player.height();
+	var horz = dir[0] * player.width();
+	
+	player
+		.animate(
+			{
+				top : vert,
+				left : horz
+			}, 
+			RainbowMaze.time
+		)
+	;
+	this.x = nx;
+	this.y = ny;
+	
+	this.getRoot()
+		.trigger(
+			RainbowMaze.events.moveUpdate,
+			++this.moves
+		);
+	if(!this.started){
+		this.startTimer();
+		this.started = true;
+	}
+	
+	if(this.maze[ny][nx].color === RainbowMaze.START){
+		this.setPlayer(this.x,this.y);
+		this.setButtons(this.x,this.y);
+		this.lock = false;
+	}else if(this.maze[ny][nx].color === RainbowMaze.END){
+		this.win();
+	}else{
+		var target;
+		if(this.maze[ny][nx].matches.length > 0){
+			target = this.maze[ny][nx].matches[rand_int(0,this.maze[ny][nx].matches.length)];
+		}else{
+			target = this.start;
+		}
+		
+		time += RainbowMaze.time*2;
+		var closure = 
+			function(rm,t){
+				return function(){
+					rm.teleport(t.x, t.y);
+				};
+			};
+		setTimeout(closure(this, target),RainbowMaze.time);
+	}
+}
+
+/**
+ * Sets interface buttons around a location
+ * 
+ * @param Integer x Row coordinate
+ * @param Integer y Column coordinate
+ */
+RainbowMaze.prototype.setButtons = function(x, y){
+	var rm = this;
+	
+	this.getRoot().find('.' + RainbowMaze.classes.buttons.main)
+		.not('.' + RainbowMaze.classes.player)
+		.fadeOut(RainbowMaze.time)
+		.promise()//waits til all are hidden
+		.done(
+			function(){
+				rm.getRoot().find('.' + RainbowMaze.classes.buttons.main)
+					.removeClass(RainbowMaze.classes.buttons.up)
+					.removeClass(RainbowMaze.classes.buttons.right)
+					.removeClass(RainbowMaze.classes.buttons.down)
+					.removeClass(RainbowMaze.classes.buttons.left)
+				;
+				var dirs = 
+					[{
+						name : 'up',
+						pos : [x + RainbowMaze.up[0], y + RainbowMaze.up[1]]
+					},{
+						name : 'left',
+						pos : [x + RainbowMaze.left[0], y + RainbowMaze.left[1]]
+					},{
+						name : 'down',
+						pos : [x + RainbowMaze.down[0], y + RainbowMaze.down[1]]
+					},{
+						name : 'right',
+						pos : [x + RainbowMaze.right[0], y + RainbowMaze.right[1]]
+					}];
+				
+				for(var i = 0, ilen = dirs.length; i < ilen; i++){
+					var dir = dirs[i];
+					if(rm.checkPos(dir.pos[0], dir.pos[1])){
+						rm.getLoc(dir.pos[0], dir.pos[1])
+							.children('.' + RainbowMaze.classes.buttons.main)
+							.css({top : 0, left : 0})
+							.addClass(RainbowMaze.classes.buttons[dir.name])
+						;
+					}
+				}
+				rm.getRoot().find('.' + RainbowMaze.classes.buttons.main)
+					.fadeIn(RainbowMaze.time);
+			}
+		)
+	;
+}
+
+/**
+ * Binds all keyboard events to controls the maze
+ */
+RainbowMaze.prototype.setKeyboardControls = function(){
 	var closure = function(rm){
 		return function(e) {
-			if(lock){
+			if(rm.lock){
 				return;
 			}
-			lock = true;
+			rm.lock = true;
 			switch(e.which) {
 				case 37:
 					rm.movePlayer(RainbowMaze.left);
@@ -252,159 +622,96 @@ RainbowMaze.prototype.controls = function(){
 					rm.movePlayer(RainbowMaze.down);
 					break;
 
-				default: lock = false;return;
+				default: rm.lock = false;return;
 			}
-			if(e.which >= 37 && e.which <= 40){
-				jQuery('#RainbowMaze'+rm.id+'_moves').text(parseInt(jQuery('#RainbowMaze'+rm.id+'_moves').text())+1);
-				if(!rm.started){
-					startTimer();
-					rm.started = true;
-				}
-			}
+			
 			e.preventDefault(); // prevent the default action (scroll / move caret)
 		};
 	};
-	jQuery(document).unbind('keydown').keydown(closure(this));
+	
+	jQuery(document)
+		.off(RainbowMaze.events.keydown)
+		.on(RainbowMaze.events.keydown, closure(this))
+	;
 }
 
+
+/**
+ * Displays the player at the coordinates
+ * 
+ * @param Integer x Row coordinate
+ * @param Integer y Column coordinate
+ */
 RainbowMaze.prototype.setPlayer = function(x, y){
-	if(x < 0 || x >= this.maze[0].length || y < 0 || y >= this.maze.length){
+	if(!this.checkPos(x,y)){
 		return;
 	}
 	var e = this.getLoc(x, y);
-	var pos = e.position();
-	var size = e.outerWidth();
-	var player = jQuery('#RainbowMaze'+this.id+'_player');
-	var offset = parseInt(e.css('margin-left').replace('px'));
-	player
-		.css({
-			'top':(pos.top)+'px', 
-			'left':(pos.left+offset)+'px'
-		}).data(
-			'x',x
-		).data(
-			'y',y
-		);
-}
-
-RainbowMaze.prototype.movePlayer = function(dir){
-	var player = jQuery('#RainbowMaze'+this.id+'_player');
-	var nx = parseInt(player.data('x')) + dir[0];
-	var ny = parseInt(player.data('y')) + dir[1];
-	if(!this.checkPos(nx, ny)){
-		lock = false;return;
-	}
-	var time = RainbowMaze.time;
-	var e = this.getLoc(nx, ny);
-	//console.log(e);
-	var pos = e.position();
-	var player_pos = player.position();
-	var vert = pos.top - player_pos.top;
-	if(vert < 0){
-		vert = vert * -1;
-		vert = '-='+vert;
-	}else{
-		vert = '+=' + vert;
-	}
-	var offset = parseInt(e.css('margin-left').replace('px'));
-	var horz = (pos.left + offset) - player_pos.left;
-	if(horz < 0){
-		horz = horz * -1;
-		horz = '-='+horz;
-	}else{
-		horz = '+=' + horz;
-	}
-	player
-		.animate(
-			{
-				top : vert,
-				left : horz
-			}, 
-			RainbowMaze.time
-		)
-		.data(
-			'x',nx
-		)
-		.data(
-			'y',ny
-		);
-	if(this.maze[ny][nx].color === RainbowMaze.START){
-		;
-	}else if(this.maze[ny][nx].color === RainbowMaze.END){
-		console.log('Win!');this.win();
-	}else{
-		var target;
-		if(this.maze[ny][nx].matches.length > 0){
-			target = this.maze[ny][nx].matches[rand_int(0,this.maze[ny][nx].matches.length)];
-		}else{
-			target = this.start;
-		}
-		time += RainbowMaze.time*2;
-		var closure = 
-			function(rm,t){
-				return function(){
-					rm.teleport(t.x, t.y)
-				};
-			};
-		setTimeout(closure(this, target),RainbowMaze.time);
-	}
 	
-	setTimeout(function(){lock = false;},time);
+	this.getRoot().find('.' + RainbowMaze.classes.player)
+		.css({top : 0, left : 0})
+		.removeClass(RainbowMaze.classes.player);
+	e.children('.' + RainbowMaze.classes.buttons.main)
+		//.css({top : 0, left : 0})
+		.addClass(RainbowMaze.classes.player);
+	var button = e.children('.' + RainbowMaze.classes.buttons.main);
+	
+	this.x = x;
+	this.y = y;
+	
+	this.setButtons(x,y);
+	
+	this.lock = false;
 }
 
+/**
+ * Starts a timer for the maze
+ */ 
+RainbowMaze.prototype.startTimer = function(){
+	RainbowMaze.continueTimer(this);
+	this.timer = setInterval(RainbowMaze.continueTimer(this),1000);
+};
+
+/**
+ * Animates fadeIn, fadeOut of player from one location to the next
+ * 
+ * @param Integer x Row coordinate of new location
+ * @param Integer y Column coordinate of new location
+ */
 RainbowMaze.prototype.teleport = function(x,y){
-	var player = jQuery('#RainbowMaze'+this.id+'_player');
+	var player = this.getRoot().find('.' + RainbowMaze.classes.player);
 	var e = this.getLoc(x, y);
-	var pos = e.position();
 	var closure = 
 		function(rm, p, tx, ty){
 			return function(){
-				rm.setPlayer(tx,ty);
-				p
-					.fadeIn(RainbowMaze.time)
-					.data(
-						'x',tx
-					)
-					.data(
-						'y',ty
-					);
+				rm.getRoot()
+					.find('.' + RainbowMaze.classes.buttons.main)
+					.css({
+						top : 0,
+						left : 0
+					});
+				
+				rm.setPlayer(tx,ty); 
+				
+				rm.setButtons(tx, ty);
+				
+				p.show(0);
 			};
 		};
 	player.fadeOut(RainbowMaze.time, closure(this, player, x, y));
 };
 
-RainbowMaze.prototype.checkPos = function(x,y){
-	return !(x < 0 || x >= this.maze[0].length || y < 0 || y >= this.maze.length);
-};
-
-RainbowMaze.dist = function(x1,y1,x2,y2){
-	return Math.max(Math.abs(x1 - x2),Math.abs(y1 - y2));
-}
-
+/**
+ * Calls win animations and events
+ */
 RainbowMaze.prototype.win = function(){
-	jQuery('#RainbowMaze'+this.id+'_console').text('You Won!');
-	jQuery('.RainbowMaze'+this.id+'_loc').animate({'opacity': 0.3}, RainbowMaze.time);
-	endTimer();
+	this.getRoot()
+		.find('.' + RainbowMaze.classes.tile.base)
+		.animate({'opacity': 0.3}, RainbowMaze.time)
+	;
+	this.endTimer();
+	this.getRoot()
+		.trigger(
+			RainbowMaze.events.win
+		);
 };
-
-var startTimer = function(){
-	continueTimer();
-	timer = setInterval(continueTimer,1000);
-};
-
-var continueTimer = function(){
-	var min = parseInt(jQuery('#min').text());
-	var sec = parseInt(jQuery('#sec').text());
-	if(sec === 59){
-		min++;
-	}
-	sec = (sec + 1)%60;
-	min = (min > 9) ? min : '0'+min;
-	sec = (sec > 9) ? sec : '0'+sec;
-	jQuery('#min').text(min);
-	jQuery('#sec').text(sec);
-};
-var endTimer = function(){
-	window.clearInterval(timer);
-	//timer_go = false;
-}
